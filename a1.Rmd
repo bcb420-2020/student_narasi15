@@ -52,12 +52,12 @@ current_gpl <- names(GPLList(gse))[1]
 current_gpl_info <- Meta(getGEO(current_gpl))
 ```
 
-**Platform title: ** `{r current_gpl_info$title}`
-**Submission date: ** `{r current_gpl_info$submission_date}`
-**Last updated date: ** `{r current_gpl_info$last_update_date}`
-**Organism: ** `{r current_gpl_info$organism}`
-**Number of GEO datasets that use this technology: **`{r length(current_gpl_info$series_id)}`
-**Number of GEO samples that use this technology: **
+## Platform title: `{r current_gpl_info$title}`
+## Submission date: `{r current_gpl_info$submission_date}`
+## Last updated date: `{r current_gpl_info$last_update_date}`
+## Organism: `{r current_gpl_info$organism}`
+## Number of GEO datasets that use this technology: `{r length(current_gpl_info$series_id)}`
+## Number of GEO samples that use this technology:
 `{r length(current_gpl_info$sample_id)}`
 
 
