@@ -1,0 +1,98 @@
+---
+title: "Assignment 1: Data Set Selection and Initial Processing"
+author: "Priyanka Narasimhan"
+output: html
+---
+
+# This R Notebook will provide insight on the initial preparation and analysis of the dataset GSE23118. 
+# Resources: Sample code from lecture slides, and RPR-GEO2R.R from Prof. Streipe.
+
+# Install and load additional packages like BiocManager, BioBase, & GEOquery
+```{r}
+rm(list = ls())
+if (! requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+if (! requireNamespace("Biobase", quietly = TRUE)) {
+  BiocManager::install("Biobase")
+}
+if (! requireNamespace("GEOquery", quietly = TRUE)) {
+  BiocManager::install("GEOquery")
+}
+# Load
+library(BiocGenerics)
+library(Biobase)
+library(GEOquery)
+```
+
+# 1 - Download the dataset from GEO
+```{r}
+gset <- GEOquery::getGEO("GSE23118", GSEMatrix =TRUE)
+length(gset) # the length is 1
+edata <- gset[[1]]
+edata # This is our expression matrix
+str(edata)
+```
+
+# Our phenodata returns a dataframe that shows our 16 sample names (rows), and 40 variable labels 
+```{r}
+names = (pData(edata))
+names
+# We get 2 supplementary files 
+supfiles = getGEOSuppFiles('GSE23118')
+fnames = rownames(sfiles)
+fnames
+```
+
+# 2 - Assessing the Dataset 
+# This particular dataset studies the interaction between phage mimetic nanorods and SKBT-3 breast cancer cells. Some general information about this dataset:
+```{r}
+gse <- getGEO("GSE23118", GSEMatrix=FALSE)
+current_gpl <- names(GPLList(gse))[1]
+current_gpl_info <- Meta(getGEO(current_gpl))
+```
+
+**Platform title: ** 
+```{r}
+current_gpl_info$title
+```
+**Submission date: ** 
+```{r}
+current_gpl_info$submission_date
+```
+**Last updated date: ** 
+```{r}
+current_gpl_info$last_update_date
+```
+**Organism: ** 
+```{r}
+current_gpl_info$organism
+```
+**Number of GEO datasets that use this technology: **
+```{r}
+length(current_gpl_info$series_id)
+```
+**Number of GEO samples that use this technology: **
+```{r}
+length(current_gpl_info$sample_id)
+```
+
+
+
+
+
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
