@@ -57,7 +57,6 @@ Definition 2: A type I interferon (IFN) is a subgroup of proteins that help regu
 
 This particular dataset studies the transcription factor ELF1, and it's effect in inbihiting replication of viral
 infections (like influenza), independent of type I interferons. 
-I was particularly interested in this dataset due to recent events and outbreaks of the corona virus. Hence I wanted to choose a topic related to viral infections and/or human body immune system. 
  
 # Some general information about this platform:
 
@@ -142,19 +141,19 @@ counts
 We want to do some filtering and cleaning up the data before moving onto normalization
 ```{r}
 # We have over 63,000 genes to account for, but genes with low counts should be removed prior to downstream analysis, because from a statistical point of view, low counts are not feasible to make reliable judgements.
-# Based on edgeR recommendations, we shall keep our minumum count as 3, since there are at least 3 samples for each group. 
+# Based on edgeR recommendations, we shall keep our minumum count as 2, since we have a test sample type with only 2 replicates.
 
 library(edgeR)
 cpms = cpm(counts[,2:18])
 rownames(cpms) <- counts[,1]
-keep = rowSums(cpms >1) >=3
+keep = rowSums(cpms >1) >=2
 counts_filtered <- counts[keep,]
 
-dim(counts_filtered) # returns [1] 14601    19
+dim(counts_filtered) # returns [1] 14935    19
 
 # Number of genes that are 'NA', that don't map to anything
 no_gene_counts <- sum(is.na(counts_filtered$gname))
-no_gene_counts # returns [1] 1205
+no_gene_counts # returns [1] 1327
 
 # Even if a gene is labelled as 'NA' we still keep it, because it has nothing to do with the validity of the gene count. It just means that a gene symbol needs to be requested.
 
@@ -211,13 +210,36 @@ abline(h = median(apply(data2plot, 2, median)), col = "red", lwd = 0.9, lty = "d
 
 ```
 ```{r}
-counts_filtered == normalized_counts
-counts_filtered > normalized_counts
+#counts_filtered == normalized_counts # should return FALSE
+
+dim(counts) - dim(counts_filtered)
+# we were able to filter out 48743 rows of data from 63678 rows
+
 ```
 
-
-
 # Discussions
+Q. What are the control and test conditions of the dataset?
+A. A549 cells (which are found in lung tissue), were used in the experiment. These cells were either:
+- not-transduced (control condition)
+- or transduced with empty vector, ELF1-WT, or ELF1-R8A mutant. (test conditions)
+
+Q. Why is the dataset of interest to you?
+A. I was particularly interested in this dataset due to recent events and outbreaks of the corona virus. Hence I wanted to choose a topic related to viral infections and/or human body immune system. So I specifically chose a dataset that was connected to viral infections like influenza. 
+
+Q. Were there expression values that were not unique for specific genes? How did you handle these?
+A. There were a few genes which got mapped to multiple expression values. After removing low counts, I ended up  
+
+Q. Were there expression values that could not be mapped to current HUGO symbols?
+A. Exactly 1327 values could not be mapped to a gene symbol.
+
+Q. How many outliers were removed?
+A. Outliers were kept because I felt like I could not remove them without coming to a valid conclusion on the reason why there were a heavy amount of outliers in the upper bound. 
+
+Q. How did you handle replicates?
+A. I had 6 types of test samples, each with 3 replicates, except one that had only 2 replicates. 
+
+Q. What is the final coverage of your dataset?
+I have a dataframe with 14935 rows for 17 samples. 
 
 
 # References
