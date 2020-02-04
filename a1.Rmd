@@ -45,23 +45,25 @@ fnames
 ```
 
 # 2 - Assessing the Dataset 
-# This particular dataset studies the interaction between phage mimetic nanorods and SKBT-3 breast cancer cells. Some general information about this platform:
+# This particular dataset studies the interaction between phage mimetic nanorods and SKBT-3 breast cancer cells. 
+# Some general information about this platform:
+
 ```{r}
 gse <- getGEO("GSE23118", GSEMatrix=FALSE)
 current_gpl <- names(GPLList(gse))[1]
 current_gpl_info <- Meta(getGEO(current_gpl))
 ```
-
 **Platform title:** `r current_gpl_info$title`
 **Submission date:** `r current_gpl_info$submission_date`
 **Last updated date:** `r current_gpl_info$last_update_date`
 **Organism:** `r current_gpl_info$organism`
 **Number of GEO datasets that use this technology:** `r length(current_gpl_info$series_id)`
-**Number of GEO samples that use this technology:**
-`r length(current_gpl_info$sample_id)`
+**Number of GEO samples that use this technology:** `r length(current_gpl_info$sample_id)`
 
+# I was particularly interested in this dataset because I recently watched a W5 series on phages and \ phage treatments, which are becoming widely popular in helping to cure disorders, bacterial infections \ and other immune-related illnesses. This particular experiment uses phage mimetic nanorods as gene/drug\ carriers to specifically-targeted cancer cells.
 
-
+# Experimental Design:
+# Phage-mimetic nanorods (PMNs) were used with 2 different types of cells, SKBR-3 breast cancer cells \ and H441 lung adenocarcinoma cells. Gene expression profiling of cells exposed to PMNs was conducted, \ and the cellular responses were recorded. Two groups of cells were compared, a control group (without \ PMNs) and a tested group. 
 
 
 
