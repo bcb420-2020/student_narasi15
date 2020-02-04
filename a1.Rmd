@@ -61,7 +61,8 @@ current_gpl_info <- Meta(getGEO(current_gpl))
 **Number of GEO samples that use this technology:** `r length(current_gpl_info$sample_id)`
 
 # I was particularly interested in this dataset because I recently watched a W5 series on phages and
-# phage treatments, which are becoming widely popular in helping to cure disorders, bacterial infections # and other immune-related illnesses. This particular experiment uses phage mimetic nanorods as
+# phage treatments, which are becoming widely popular in helping to cure disorders, bacterial infections
+# and other immune-related illnesses. This particular experiment uses phage mimetic nanorods as
 # gene/drug carriers to specifically-targeted cancer cells.
 
 # Experimental Design:
