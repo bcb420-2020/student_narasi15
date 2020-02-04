@@ -7,7 +7,7 @@ output: html
 # This R Notebook will provide insight on the initial preparation and analysis of the dataset GSE23118. 
 # Resources: Sample code from lecture slides, and RPR-GEO2R.R from Prof. Streipe.
 
-# Install and load additional packages like BiocManager, BioBase, & GEOquery
+# 0 - Install and load additional packages like BiocManager, BioBase, & GEOquery
 ```{r}
 rm(list = ls())
 if (! requireNamespace("BiocManager", quietly = TRUE)) {
@@ -60,16 +60,16 @@ current_gpl_info <- Meta(getGEO(current_gpl))
 **Number of GEO datasets that use this technology:** `r length(current_gpl_info$series_id)`
 **Number of GEO samples that use this technology:** `r length(current_gpl_info$sample_id)`
 
-# I was particularly interested in this dataset because I recently watched a W5 series on phages and
-# phage treatments, which are becoming widely popular in helping to cure disorders, bacterial infections
-# and other immune-related illnesses. This particular experiment uses phage mimetic nanorods as
-# gene/drug carriers to specifically-targeted cancer cells.
+I was particularly interested in this dataset because I recently watched a W5 series on phages and
+phage treatments, which are becoming widely popular in helping to cure disorders, bacterial infections
+and other immune-related illnesses. This particular experiment uses phage mimetic nanorods as
+gene/drug carriers to specifically-targeted cancer cells.
 
 # Experimental Design:
-# Phage-mimetic nanorods (PMNs) were used with 2 different types of cells, SKBR-3 breast cancer cells
-# and H441 lung adenocarcinoma cells. Gene expression profiling of cells exposed to PMNs was conducted,
-# and the cellular responses were recorded. Two groups of cells were compared, a control group
-# (without PMNs) and a tested group. 
+Phage-mimetic nanorods (PMNs) were used with 2 different types of cells, SKBR-3 breast cancer cells
+and H441 lung adenocarcinoma cells. Gene expression profiling of cells exposed to PMNs was conducted,
+and the cellular responses were recorded. Two groups of cells were compared, a control group
+(without PMNs) and a tested group. 
 
 
 
