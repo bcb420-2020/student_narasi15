@@ -104,16 +104,17 @@ any(duplicated(rownames(counts)))
 
 ```{r}
 # Define groups, using 1, 3, and 2 token after split string
-# "Transduced" column - either empty, ELF1, cell or R8A
-# "trial_num" - pretty self explanatory
-# "mock_or_IFN" - mock means no stimulation with IFN
+# "Treatment" column - tells us which was transduced in this test, it could be either empty, ELF1, cell or R8A
+# "trial_num" - replicate number
+# Test_run is just a concatenation of the 2 columns Treatment and mock_or_IFN to get the name of a sample test run
 samples <- data.frame(lapply(colnames(counts)[2:18],
                              FUN = function(x) {
                                unlist(strsplit(x, split="_"))[c(1, 3, 2)]
                              }))
 colnames(samples) <- colnames(counts)[2:18]
-rownames(samples) <- c("Transduced", "trial_num", "mock_or_IFN")
+rownames(samples) <- c("Treatment", "trial_num", "mock_or_IFN")
 samples <- data.frame(t(samples))
+samples$Test_run = paste(samples$Treatment,"_",samples$mock_or_IFN)
 samples
 ```
 
@@ -155,17 +156,76 @@ dim(counts_filtered) # returns [1] 14601    19
 no_gene_counts <- sum(is.na(counts_filtered$gname))
 no_gene_counts # returns [1] 1205
 
-# Discussion ...
-# - Even if a gene is labelled as 'NA' we still keep it, because it has nothing to do with the validity of the gene count. It just means that a gene symbol needs to be requested.
+# Even if a gene is labelled as 'NA' we still keep it, because it has nothing to do with the validity of the gene count. It just means that a gene symbol needs to be requested.
+
+# Before filtering, there were lots of duplicates, but after removing the ones with low counts we look at the duplicates and we barely have any 
+summarized_gene_counts <- sort(table(counts_filtered$gname),decreasing = TRUE)
+summarized_gene_counts <- which(summarized_gene_counts>1)
+summarized_gene_counts
+# returns 
+# LMF1   RAD54B TRAPPC13 
+#   1        2        3
 
 ```
 
 
 # 5 - Normalize the data
+Let's represent our filtered data through a box plot.
+```{r}
+data2plot <- log2(cpm(counts_filtered[,2:18]))
+boxplot(data2plot, xlab = "Samples", ylab = "log2 CPM", 
+        las = 2, cex = 0.5, cex.lab = 0.5,
+        cex.axis = 0.5, main = "A549 cells RNASeq Samples, before normalization")
+#draw the median on each box plot
+abline(h = median(apply(data2plot, 2, median)), col = "red", lwd = 0.9, lty = "dashed")
+
+```
+
+There are outliers in each of our 17 samples. By looking at the boxplot, there are a lot of values far above and below the median. These samples may require more investigation.  When I take a look at the sample table data, I can also see that there are a wide range of values for gene count. 
+
+According to the journal, _An Iterative Leave-One-Out Approach to Outlier Detection in RNA-Seq Data_ by , "RNA-seq measures RNA content through digital expression profiling by counting the number of sequencing reads that map to a particular feature (e.g. exon, gene, or transcript). Given the dynamic range of RNA-seq data and practically no ceiling for quantification, extreme high counts (i.e. outliers) for a given feature are often present in one or more RNA samples within an experimental group."
+
+Because of this, I have chosen to leave the outliers as is. 
+
+Let's normalize the data by TTM. I am choosing TTM because, my analysis is between the different samples, and it is said to be one of the methods that perform well both with the ability to detect and control false positives. 
+And since my data includes a lot of outliers in both extremes, TTM will allow me to remove the upper and lower percentages.
+
+```{r}
+library(edgeR)
+filtered_counts_matrix <- as.matrix(counts_filtered[,2:18])
+rownames(filtered_counts_matrix) <- counts_filtered$ensembl75_id
+d = DGEList(counts=filtered_counts_matrix, group=samples$Transduced)
+
+d = calcNormFactors(d)
+normalized_counts <- cpm(d)
+```
+
+After normalization..
+```{r}
+norm_data <- log2(cpm(normalized_counts[,1:17]))
+boxplot(norm_data, xlab = "Samples", ylab = "log2 CPM", 
+        las = 2, cex = 0.5, cex.lab = 0.5,
+        cex.axis = 0.5, main = "A549 cells RNASeq Samples, after normalization")
+#draw the median on each box plot
+abline(h = median(apply(data2plot, 2, median)), col = "red", lwd = 0.9, lty = "dashed")
+
+```
+```{r}
+counts_filtered == normalized_counts
+counts_filtered > normalized_counts
+```
+
+
+
+# Discussions
+
 
 # References
-https://www.biostars.org/p/239681/
-https://www.bioconductor.org/packages/release/workflows/vignettes/RnaSeqGeneEdgeRQL/inst/doc/edgeRQL.html#filtering-to-remove-low-counts
+R: converting Ensembl row names to Symbol ID outputs missing values in 'row.names' are not allowed. (n.d.). Retrieved from https://www.biostars.org/p/239681/
+
+(2018, October 28). Retrieved from https://www.bioconductor.org/packages/release/workflows/vignettes/RnaSeqGeneEdgeRQL/inst/doc/edgeRQL.html#filtering-to-remove-low-counts
+
+George, N. I., Bowyer, J. F., & Nathaniel M. Crabtree, C.-W. C. (n.d.). An Iterative Leave-One-Out Approach to Outlier Detection in RNA-Seq Data. Retrieved from https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125224
 
 
 
