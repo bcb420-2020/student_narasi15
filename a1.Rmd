@@ -7,6 +7,10 @@ output: html
 # This R Notebook will provide insight on the initial preparation and analysis of the dataset GSE136864. 
 # Resources: Sample code from lectures 3 & 4, and RPR-GEO2R.R file from Prof. Streipe was used.
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 # 0 - Install and load additional packages like BiocManager, BioBase, & GEOquery
 ```{r}
 rm(list = ls())
