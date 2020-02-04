@@ -66,7 +66,8 @@ current_gpl_info <- Meta(getGEO(current_gpl))
 
 # Experimental Design:
 # Phage-mimetic nanorods (PMNs) were used with 2 different types of cells, SKBR-3 breast cancer cells
-# and H441 lung adenocarcinoma cells. Gene expression profiling of cells exposed to PMNs was conducted, # and the cellular responses were recorded. Two groups of cells were compared, a control group
+# and H441 lung adenocarcinoma cells. Gene expression profiling of cells exposed to PMNs was conducted,
+# and the cellular responses were recorded. Two groups of cells were compared, a control group
 # (without PMNs) and a tested group. 
 
 
