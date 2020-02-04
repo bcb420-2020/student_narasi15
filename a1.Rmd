@@ -19,6 +19,7 @@ if (! requireNamespace("Biobase", quietly = TRUE)) {
 if (! requireNamespace("GEOquery", quietly = TRUE)) {
   BiocManager::install("GEOquery")
 }
+
 # Load
 library(BiocGenerics)
 library(Biobase)
@@ -28,12 +29,10 @@ library(GEOquery)
 # 1 - Download the dataset from GEO
 ```{r}
 gset <- GEOquery::getGEO("GSE136864", GSEMatrix =TRUE)
-
 # Some additional info:
 length(gset) # the length is 1
 edata <- gset[[1]]
 edata # This is our expression matrix
-
 # Our phenodata returns a dataframe that shows our 17 GEO samples, and 49 variable (column) labels
 names = (pData(edata))
 names
@@ -43,12 +42,10 @@ names
 ```{r}
 supfile <- NULL
 sfilename="GSE136864_elf1_counts_matrix.txt.gz" 
-
 # Don't download if supp. file already exists
 if (!file.exists(sfilename)) {
     supfile <- getGEOSuppFiles('GSE136864')
  } 
-
 fnames = rownames(supfile)
 fnames
 ```
@@ -97,11 +94,19 @@ dim(counts) # returns [1] 63678    18
 ```
 
 ```{r}
+# Use column 1 in the 'counts' table as the rownames
+rownames(counts) <- counts[, 1]
+counts
+
+# check for any duplicate rownames, there are no duplicate row names!
+any(duplicated(rownames(counts)))
+```
+
+```{r}
 # Define groups, using 1, 3, and 2 token after split string
 # "Transduced" column - either empty, ELF1, cell or R8A
 # "trial_num" - pretty self explanatory
 # "mock_or_IFN" - mock means no stimulation with IFN
-
 samples <- data.frame(lapply(colnames(counts)[2:18],
                              FUN = function(x) {
                                unlist(strsplit(x, split="_"))[c(1, 3, 2)]
@@ -110,17 +115,58 @@ colnames(samples) <- colnames(counts)[2:18]
 rownames(samples) <- c("Transduced", "trial_num", "mock_or_IFN")
 samples <- data.frame(t(samples))
 samples
+```
+
+# 3 - Map to HUGO symbols
+Our dataset curently contains 63,678 Ensembl (ENSG) genes which need to be mapped to HUGO symbols.
+```{r}
+# install and load the necessary libraries
+if (! requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
+    BiocManager::install("org.Hs.eg.db")
+}
+suppressMessages(library("AnnotationDbi"))
+suppressMessages(library("org.Hs.eg.db"))
+
+# Map to HUGO symbols and add as a new column 'gname' to our table
+if (!any(colnames(counts) == 'gname')) {
+  counts <- cbind(counts, gname=mapIds(org.Hs.eg.db,keys=rownames(counts),column="SYMBOL",keytype="ENSEMBL",multiVals="first"))
+}
+
+# Now check for duplicates in newly added gname column
+any(duplicated(counts$gname)) # Yes there are duplicates!
+counts
+```
+
+# 4 - Clean the data
+We want to do some filtering and cleaning up the data before moving onto normalization
+```{r}
+# We have over 63,000 genes to account for, but genes with low counts should be removed prior to downstream analysis, because from a statistical point of view, low counts are not feasible to make reliable judgements.
+# Based on edgeR recommendations, we shall keep our minumum count as 3, since there are at least 3 samples for each group. 
+
+library(edgeR)
+cpms = cpm(counts[,2:18])
+rownames(cpms) <- counts[,1]
+keep = rowSums(cpms >1) >=3
+counts_filtered <- counts[keep,]
+
+dim(counts_filtered) # returns [1] 14601    19
+
+# Number of genes that are 'NA', that don't map to anything
+no_gene_counts <- sum(is.na(counts_filtered$gname))
+no_gene_counts # returns [1] 1205
+
+# Discussion ...
+# - Even if a gene is labelled as 'NA' we still keep it, because it has nothing to do with the validity of the gene count. It just means that a gene symbol needs to be requested.
 
 ```
 
 
-# 3 - Map to HUGO symbols
-
-# 4 - Clean the data
-
 # 5 - Normalize the data
 
 # References
+https://www.biostars.org/p/239681/
+https://www.bioconductor.org/packages/release/workflows/vignettes/RnaSeqGeneEdgeRQL/inst/doc/edgeRQL.html#filtering-to-remove-low-counts
+
 
 
 
