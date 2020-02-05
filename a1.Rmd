@@ -213,8 +213,9 @@ boxplot(norm_data, xlab = "Samples", ylab = "log2 CPM",
 abline(h = median(apply(data2plot, 2, median)), col = "red", lwd = 0.9, lty = "dashed")
 
 ```
+
 ```{r}
-#counts_filtered == normalized_counts # should return FALSE
+counts_filtered == normalized_counts # should return FALSE
 
 dim(counts) - dim(counts_filtered)
 # we were able to filter out 48743 rows of data from 63678 rows
@@ -243,7 +244,7 @@ Q. How did you handle replicates?
 A. I had 6 types of test samples, each with 3 replicates, except one that had only 2 replicates. 
 
 Q. What is the final coverage of your dataset?
-I have a dataframe with 14935 rows for 17 samples. 
+I have filtered out with 14935 rows for 17 samples, but was not able to place it in a dataframe with HUGO symbols as rownames. 
 
 
 # References
