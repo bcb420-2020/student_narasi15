@@ -66,7 +66,7 @@ library(edgeR)
 library(Biobase)
 ```
 
-# 1 - Initial setup 
+*1 - Initial setup*
 Load our clean, normalized data and view it.
 ```{r}
 normalized_count_data <- read.csv("counts_filtered.csv")
@@ -90,7 +90,7 @@ chosen_samples <- chosen_samples[, c(4, 5, 6, 16, 17, 7, 8, 9, 10, 11, 12)]
 chosen_samples
 ```
 
-# Groups re-defined
+*Groups re-defined*
 ```{r}
 samples <- data.frame(lapply(colnames(chosen_samples)[1:11],
                              FUN = function(x) {
@@ -99,11 +99,11 @@ samples <- data.frame(lapply(colnames(chosen_samples)[1:11],
 colnames(samples) <- colnames(chosen_samples)[1:11]
 rownames(samples) <- c("Treatment", "trial_num", "mock_or_IFN")
 samples <- data.frame(t(samples))
-samples$Test_run = paste(samples$Treatment,"_",samples$mock_or_IFN)
+samples$Test_run = paste(samples$Treatment,samples$mock_or_IFN, sep = "_")
 samples
 ```
 
-# Create a Heat Map
+*Create a Heat Map*
 ```{r}
 library(ComplexHeatmap)
 library(circlize)
@@ -129,7 +129,7 @@ current_heatmap
 ```
 
 
-# Create MDS Plot
+*Create MDS Plot*
 I was unable to create an MDS plot on the desirable sample groups in A1, so here's one now!
 ```{r}
 filtered_data_matrix <- as.matrix(chosen_samples)
@@ -143,7 +143,7 @@ limma::plotMDS(d, col = c("darkgreen","blue", "cyan", "green")[factor(samples$Te
 ```
 The dissimilarity shown between the 2 groups with ELF1 gene and with interferons is clear. Using the above MDS plot, and chosen 4 sample groups of interest, we can create our model. 
 
-# 2 - Define model design and factors
+*2 - Define model design and factors*
 
 ```{r}
 
@@ -199,11 +199,12 @@ length(which(output_hits$adj.P.Val < 0.05))   # returns 0
 Notice that the adjusted p-values are correct. This simply means there is no evidence at all for rejecting the null hypothesis. This is not very promising as the 108 genes that were significantly expressed before the adjustment all dissapeared, and after adjustment of the p-value we have none. 
 Let us try multiple hypothesis testing to see if we can get better adjusted p values. 
 
-# 3 - Multiple Hypothesis Testing
+*3 - Multiple Hypothesis Testing*
 Create a different linear model that includes 2 parameters, trial number and trial type
 ```{r}
+d = DGEList(counts=filtered_data_matrix, group=sample_groups$trial_num)
 model_design_two_params <- model.matrix(
-  ~ sample_groups$Test_run + sample_groups$Test_run)
+  ~ sample_groups$Test_run + sample_groups$trial_num)
 kable(model_design_two_params,type="html")
 ```
 
@@ -233,25 +234,98 @@ length(which(output_hits_params$adj.P.Val < 0.05))
 ```
 
 ```{r}
-#estimate dispersion
-matrix_filtered <- as.matrix(chosen_samples)
-rownames(matrix_filtered) <- normalized_count_data$ensembl_gene_id
-
-d = DGEList(counts=matrix_filtered, group=sample_groups$Test_run)
-d <- estimateDisp(d, model_design_two_params)
-
-#calculate normalization factors
-d <- calcNormFactors(d)
-#fit to the new model QLR
-fit <- glmQLFit(d, model_design_two_params)
-#calculate differential expression
-fit
-qlf.pos_vs_neg <- glmQLFTest(fit, coef='sample_groups$Test_run')
-
+s <- sample_groups$Test_run
+s
 ```
 
 
+```{r}
 
+d = DGEList(counts=filtered_data_matrix, group=sample_groups$Test_run)
+model_design_pat <- model.matrix(
+  ~ sample_groups$trial_num + sample_groups$Test_run)
+
+#estimate dispersion
+d <- estimateDisp(d, model_design_pat)
+#calculate normalization factors
+d <- calcNormFactors(d)
+#fit model
+fit <- glmQLFit(d, model_design_pat)
+
+#calculate differential expression
+model_design_pat
+qlf.pos_vs_neg <- glmQLFTest(fit, coef='sample_groups$trial_num2')
+```
+
+```{r}
+#Get all the results
+qlf_output_hits <- topTags(qlf.pos_vs_neg,sort.by = "PValue",
+                           n = nrow(filtered_data_matrix))
+length(which(qlf_output_hits$table$PValue < 0.05))
+length(which(qlf_output_hits$table$FDR < 0.05))
+```
+```{r}
+kable(topTags(qlf.pos_vs_neg), type="html")
+```
+
+```{r}
+# Find out the number of upregulated 
+length(which(qlf_output_hits$table$PValue < 0.05 
+             & qlf_output_hits$table$logFC > 0))
+# and downregulated genes
+length(which(qlf_output_hits$table$PValue < 0.05 
+             & qlf_output_hits$table$logFC < 0))
+```
+
+
+```{r}
+# Referred to lecture slides for this portion
+#merge gene names with the top hits and collect the down regulated and upregulated genes
+qlf_output_hits_withgn <- merge(normalized_count_data[,1:2],qlf_output_hits, by.x=1, by.y = 0)
+qlf_output_hits_withgn[,"rank"] <- -log(qlf_output_hits_withgn$PValue,base =10) * sign(qlf_output_hits_withgn$logFC)
+qlf_output_hits_withgn <- qlf_output_hits_withgn[order(qlf_output_hits_withgn$rank),]
+upregulated_genes <- qlf_output_hits_withgn$hgnc_symbol[
+  which(qlf_output_hits_withgn$PValue < 0.05 
+             & qlf_output_hits_withgn$logFC > 0)]
+downregulated_genes <- qlf_output_hits_withgn$hgnc_symbol[
+  which(qlf_output_hits_withgn$PValue < 0.05 
+             & qlf_output_hits_withgn$logFC < 0)]
+all_genes <- c(upregulated_genes, downregulated_genes)
+write.table(x=upregulated_genes,
+            file=file.path("data","upregulated_genes.txt"),sep = "\t",
+            row.names = FALSE,col.names = FALSE,quote = FALSE)
+write.table(x=downregulated_genes,
+            file=file.path("data","downregulated_genes.txt"),sep = "\t",
+            row.names = FALSE,col.names = FALSE,quote = FALSE)
+write.table(x=all_genes,
+            file=file.path("data","all_genes.txt"),sep = "\t",
+            row.names = FALSE,col.names = FALSE,quote = FALSE)
+
+```
+
+*Threshold Analysis with Gprofiler*
+We now have the thresholded list of downregulated and upregulated genes. Now we can perform our threshold analysis. 
+
+Similar to the homework assignment, I have chosen to use the Benjamini-Hochberg FDR, WikiPathways, Reactome and GO biological process from the gprofiler site, and will copy paste the individual down regulated and upregulated genes I came up with. 
+
+*Here are the Gprofiler results for the files uploaded:*
+# Upregulated Genes:
+GO Biological - 318 genesets
+Reactome - 32 genesets
+WikiPathways - 10 genesets
+
+# Downregulated Genes:
+GO Biological - 251 genesets
+Reactome - 0 genesets
+WikiPathways - 0 genesets
+
+We were not able to produce any genesets from Reactome or WikiPathways for downregulated genes.
+
+Here are the images taken from the detailed query tab for upregulated and downregulated genes, respectively. 
+
+![](./images/upregulated_genes.png)
+
+![](./images/downregulated_genes.png)
 
 # Resources
 http://www.endmemo.com/program/R/readtable.php
