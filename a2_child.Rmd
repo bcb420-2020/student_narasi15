@@ -1,0 +1,253 @@
+---
+title: "Assignment 2: Differential Gene expression and Preliminary ORA"
+author: "Priyanka Narasimhan"
+output: html_document
+---
+
+```{r setup2, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, cache = TRUE, fig.asp = 1)
+```
+
+#### Differential Gene Expression
+
+#### 1 - Load our clean, normalized data from A1. 
+```{r, include=FALSE}
+packages = c("kableExtra", "ComplexHeatmap", "circlize")
+bioconductor_packages = c("BiocManager", "Biobase", "ComplexHeatmap", "limma", "edgeR")
+for (package in packages){
+   install.packages(package)
+}
+for(package in bioconductor_packages){
+  BiocManager::install(package, update = FALSE)
+}
+# Load the libraries
+library(kableExtra)
+library(limma)
+library(ComplexHeatmap)
+library(edgeR)
+library(Biobase)
+```
+
+Let us also remove all unmapped rows from A1. Here are the dimensions of the new data set. 
+```{r}
+normalized_count_data <- read.csv("counts_filtered.csv")
+normalized_count_data <- normalized_count_data[!is.na(normalized_count_data$hgnc_symbol),]
+dim(normalized_count_data)  # returns [1] 13608    19
+```
+
+We are given 19 columns (consisting of 2 columns with the Ensembl genes and the HUGO symbols, and 17 samples).
+
+```{r}
+cols <- normalized_count_data[,3:19]
+colnames(cols)
+```
+
+We have 6 different groups(samples) to compare, but that may be too many at once. Since this experiment wants to prove there is an additional effect of ELF1 genes outside of interferons, let us choose the following 4 samples: empty_IFN48, empty_IFN6, ELF1_mock, R8A_mock <br />
+where: <br />
+empty_IFN48 & empty_IFN6 are the interferon samples
+ELF1_mock & R8A_mock are the ELF1 samples
+```{r}
+chosen_samples <- normalized_count_data[,3:19]
+chosen_samples <- chosen_samples[, c(4, 5, 6, 16, 17, 7, 8, 9, 10, 11, 12)]
+chosen_samples
+```
+
+*Groups re-defined*
+```{r}
+samples <- data.frame(lapply(colnames(chosen_samples)[1:11],
+                             FUN = function(x) {
+                               unlist(strsplit(x, split="_"))[c(1, 3, 2)]
+                             }))
+colnames(samples) <- colnames(chosen_samples)[1:11]
+rownames(samples) <- c("Treatment", "trial_num", "mock_or_IFN")
+samples <- data.frame(t(samples))
+samples$Test_run = paste(samples$Treatment,samples$mock_or_IFN, sep = "_")
+samples
+```
+
+*Create MDS Plot:*
+I was unable to create an MDS plot on the desirable sample groups in A1, so here's one now!
+```{r}
+filtered_data_matrix <- as.matrix(chosen_samples)
+
+rownames(filtered_data_matrix) <- normalized_count_data$ensembl_gene_id
+#filtered_data_matrix
+d = DGEList(counts=filtered_data_matrix, group=samples$Test_run)
+
+limma::plotMDS(d, col = c("darkgreen","blue", "cyan", "green")[factor(samples$Test_run)], 
+               main = "ELF1 vs Interferons Sample groups after TMM normalization")
+```
+
+The dissimilarity shown between the 2 groups with ELF1 gene and with interferons is clear. Hence the appropriate factor to use would be Treatment: ELF1 vs Interferons. We can look for any significant differences between upregulated and downregulated genes between ELF1 tests and stimulation after using interferons.
+Let us classify the samples that were transduced with ELF1 and the samples that were stimulated under interferon-beta. 
+
+Using the above MDS plot, and chosen sample groups of interest, we have decided to classify by treatment types, and we can create our model.
+
+*2 - Define model design and factors*
+
+```{r}
+
+sample_groups <- samples[, c(2, 4)]
+sample_groups
+
+model_design <- model.matrix(~ sample_groups$trial_num)
+#kable(model_design, type="html")
+
+expressionMatrix <- as.matrix(chosen_samples)
+rownames(expressionMatrix) <- normalized_count_data$ensembl_gene_id
+colnames(expressionMatrix) <- colnames(chosen_samples)
+minimalSet <- ExpressionSet(assayData=expressionMatrix)
+
+dim(minimalSet)
+
+#Fit our data to the above model
+fit <- lmFit(minimalSet, model_design)
+
+```
+
+Fit our data to the above model (Referred to lecture 5 slides, slides 4-6):
+```{r}
+fit2 <- eBayes(fit,trend=TRUE)
+
+topfit <- topTable(fit2, 
+                   coef=ncol(model_design),
+                   adjust.method = "BH",
+                   number = nrow(expressionMatrix))
+#merge hgnc names to topfit table
+output_hits <- merge(normalized_count_data[,1:2],
+                     topfit,
+                     by.y=0,by.x=1,
+                     all.y=TRUE)
+
+#sort by pvalue
+output_hits <- output_hits[order(output_hits$P.Value),]
+
+kable(output_hits[1:10,],type="html")
+# Referred to lecture 5 slides, slides 21-23
+
+```
+<br />
+I chose to keep the significance threshold as the default 0.05, and from this the number of genes that did not pass the threshold are: <br />
+Genes that pass the threshold:
+```{r}
+length(which(output_hits$P.Value < 0.05))   # returns 108
+```
+Genes that pass adjusted p value:
+```{r}
+length(which(output_hits$adj.P.Val < 0.05))   # returns 0
+```
+
+Notice that the adjusted p-values are correct. This simply means there is no evidence at all for rejecting the null hypothesis. This is not very promising as the 108 genes that were significantly expressed before the adjustment all dissapeared, and after adjustment of the p-value we have none. 
+Let us try multiple hypothesis testing to see if we can get better adjusted p values. 
+
+*3 - Multiple Hypothesis Testing*
+Create a different linear model that includes 2 parameters, trial number and trial type. Here are the adjusted p-values:
+```{r}
+d = DGEList(counts=filtered_data_matrix, group=sample_groups$trial_num)
+model_design_two_params <- model.matrix(
+  ~ sample_groups$Test_run + sample_groups$trial_num)
+#kable(model_design_two_params,type="html")
+```
+
+```{r}
+fit_params <- lmFit(minimalSet, model_design_two_params)
+fit2_params <- eBayes(fit_params,trend=TRUE)
+
+topfit_params <- topTable(fit2_params, 
+                   coef=ncol(model_design_two_params),
+                   adjust.method = "BH",
+                   number = nrow(expressionMatrix))
+#merge hgnc names to topfit table
+output_hits_params <- merge(normalized_count_data[,1:2],
+                         topfit_params,by.y=0,by.x=1,all.y=TRUE)
+#sort by pvalue
+output_hits_params <- output_hits_params[order(output_hits_params$P.Value),]
+
+kable(output_hits_params[1:10,],type="html")
+```
+
+Genes that pass the threshold:
+```{r}
+length(which(output_hits_params$P.Value < 0.05))
+```
+
+Genes that pass adjusted p value:
+```{r}
+length(which(output_hits_params$adj.P.Val < 0.05))
+```
+
+
+```{r}
+
+d = DGEList(counts=filtered_data_matrix, group=sample_groups$Test_run)
+model_design_pat <- model.matrix(
+  ~ sample_groups$trial_num + sample_groups$Test_run)
+
+#estimate dispersion
+d <- estimateDisp(d, model_design_pat)
+#calculate normalization factors
+d <- calcNormFactors(d)
+#fit model
+fit <- glmQLFit(d, model_design_pat)
+
+#calculate differential expression
+qlf.pos_vs_neg <- glmQLFTest(fit, coef='sample_groups$trial_num2')
+```
+
+```{r}
+#Get all the results
+qlf_output_hits <- topTags(qlf.pos_vs_neg,sort.by = "PValue",
+                           n = nrow(filtered_data_matrix))
+#length(which(qlf_output_hits$table$PValue < 0.05))
+#length(which(qlf_output_hits$table$FDR < 0.05))
+```
+```{r}
+kable(topTags(qlf.pos_vs_neg), type="html")
+```
+
+Find out the number of upregulated genes:
+```{r}
+length(which(qlf_output_hits$table$PValue < 0.05 
+             & qlf_output_hits$table$logFC > 0))
+```
+... and downregulated genes
+```{r}
+
+length(which(qlf_output_hits$table$PValue < 0.05 
+             & qlf_output_hits$table$logFC < 0))
+```
+
+
+```{r}
+# Referred to lecture slides for this portion
+#merge gene names with the top hits and collect the down regulated and upregulated genes
+qlf_output_hits_withgn <- merge(normalized_count_data[,1:2],qlf_output_hits, by.x=1, by.y = 0)
+qlf_output_hits_withgn[,"rank"] <- -log(qlf_output_hits_withgn$PValue,base =10) * sign(qlf_output_hits_withgn$logFC)
+qlf_output_hits_withgn <- qlf_output_hits_withgn[order(qlf_output_hits_withgn$rank),]
+upregulated_genes <- qlf_output_hits_withgn$hgnc_symbol[
+  which(qlf_output_hits_withgn$PValue < 0.05 
+             & qlf_output_hits_withgn$logFC > 0)]
+downregulated_genes <- qlf_output_hits_withgn$hgnc_symbol[
+  which(qlf_output_hits_withgn$PValue < 0.05 
+             & qlf_output_hits_withgn$logFC < 0)]
+all_genes <- c(upregulated_genes, downregulated_genes)
+write.table(x=upregulated_genes,
+            file=file.path("data","upregulated_genes.txt"),sep = "\t",
+            row.names = FALSE,col.names = FALSE,quote = FALSE)
+write.table(x=downregulated_genes,
+            file=file.path("data","downregulated_genes.txt"),sep = "\t",
+            row.names = FALSE,col.names = FALSE,quote = FALSE)
+write.table(x=all_genes,
+            file=file.path("data","all_genes.txt"),sep = "\t",
+            row.names = FALSE,col.names = FALSE,quote = FALSE)
+
+```
+
+
+
+
+
+
+
+
+
