@@ -91,9 +91,12 @@ We can now use Cytoscape to visualize our GSEA results. I plan to use the GSEA m
 
 The resultant Enrichment Map was incredibly complex to interpret. There were a lot of network with lots of edges indicating the presence of overlaps between genesets, here is a screenshot prior to manual layout:
 ![](figures/enrichment_map.png)
+I simplified the visual by setting the number of nodes to even less, by adjusting the Q-value slider to 0.001, this got rid of a lot of excess nodes. In one of the major leftover clusters that describe na_pos upregulated genes show the common theme of system development. I have annotated it using the Annotate tool provided in Cytoscape. <br />
+![](figures/annotated_cluster.png)
+It was interesting to see a lot of 'system development' related genes arise since ELF1 and interferons have more to do with immunity and response systems. 
+The publication mentions the wide prevalence of the ELF1 gene in multiple cell systems, and its expression under the added influence of interferons. 
 
 
-#### Interpretation and detailed view of results
 
 ## External Resources
 https://bookdown.org/yihui/rmarkdown/html-document.html#section-numbering <br />
